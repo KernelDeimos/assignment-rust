@@ -11,11 +11,16 @@
 1. The book titled "The Rust Programming Language" will be referred to as
   "the Rust book" throughout this document to prevent the author from
   developing RSI symptoms.
+2. I have never used or learned about Rust prior to this project, but I have
+  used Go, which is frequently compared to Rust. Because of this, I will comment
+  on some of the differences and similarities between Rust and Go.
 
 ## Language Syntax
 
 - The syntax of Rust looks similar to C, using curly braces to enclose blocks
   of code and semicolons to mark the ends of statements.
+- Like in Go, brackets aren't required around conditions when using `if`, `for`,
+  or `while`.
 - Variable types in Rust are written after the identifier,
   or implied by their first assignment.
 - Like in Clojure, control flow constructs can be used as expressions.
@@ -42,15 +47,37 @@ respectively.
 
 ## Metaprogramming
 
-Yes.
+The Rust book explains macros using the built in `vec!` macro as an example.
+This macro creates a vector, and makes multiple calls to the `push` method to
+add each element. An advantage this has is that there does not need to be
+separate logic for adding items when constructing a vector vs adding items after
+a vector has been constructed.
 
-(todo: elaborate using Rust's `vec!` example)
+Rust has a two different types of macros, and the one mentioned above is called
+a **declarative macro**. These use a special syntax, separate from other Rust
+code, to define macros.
 
-## Scoping
+The other type is a procedural macro. These are more similar to macros in
+Clojure because Rust source code is used to modify other Rust source code.
 
-Lexical scoping with block scope
+Macros are one of the features which separate Rust from Go. However, Go has
+tools available to encourage the use of custom code generators.
 
-(todo: maybe elaborate)
+## Scoping and Ownership
+
+Rust uses lexical scoping with block scope, which is typical in most modern
+languages. However, Rust has very specific rules about when variables are valid
+to ensure any compiled code can't make invalid accesses to memory or cause
+race conditions. They claim that any code which can cause a data race simply
+won't compile. (although this is different from a general race condition which
+can be caused by logic errors)
+
+Here's a simplified take on Rust's ownership rules:
+- Once the scope owning a value is closed, data on the heap is cleaned up
+- Ownership can be transferred to another function (or a closure; I tested it)
+- Once ownership is transferred, the original variable becomes invalid
+- Ownership can be "borrowed" using references
+- Specific rules prevent borrowing in situations where a data race could occur
 
 ## Functional Language Features
 Rust has limited support for functional programming features. Because recursion
@@ -96,15 +123,20 @@ result was observed when rewriting the code to not use `if` as an expression.
 
 ## Static Typing
 
-(todo: talk about when Rust's compiler can infer types)
+Rust uses static typing. Rust also has support for generics using a syntax
+similar to that seen in C++ or Java. This is one of the features which set Rust
+apart from Go, which does not support generics, but has an "empty interface"
+type which can store any object (similar to Object in Java).
 
-## Strengths and Weaknesses
+Like most modern statically typed languages, Rust will infer the type of data
+when enough information is available for the compiler to figure it out, which
+saves extra typing for the programmer.
 
-(todo: try to get into the controversy without getting into the controversy)
-
-## Interesting Examples
-
-### Method behaviour based on return type
+Another interesting feature is that a function can be generic to its return
+type, or a subset of the possible return types. For example, the parse function
+on strings will behave differently depending on whether the return value is an
+integer (will only accept whole number strings) or a float (will accept a
+decimal point in the string).
 
 The following is an example from the Rust book.
 ```
@@ -112,15 +144,33 @@ let guess: u32 = guess.trim().parse()
 	.expect("Please type a number!");
 ```
 
-In this example, the `parse` method produces an error if it fails to
-parse an integer. What I think is interesting about this is that the
-desired format (i.e. integer or floating point) is not specified as
-an argument to the parse method.
+It can be seen in this example that parse is called with no parameters, and
+cast to the `u32` type (unsigned integer). When entering a value such as `5.1`,
+the "Please type a number!" error is displayed, which shows that the parse
+method knows its return value is being cast to an integer.
 
-At first, I expected that the call to parse wouldn't report any error
-if the user types `5.1`, but instead a different error would be
-produced after parse returns and before the number is cast to `u32`.
+## Strengths and Weaknesses
 
-To my surprise, the behaviour of the parse method seems to be
-dependent on the type its return value is being returned to. I assume this is
-done using method overloading, but I'm not sure yet.
+### Some Strengths
+- Invalid memory access not possible
+- Syntax is borrowed from existing languages
+- Concurrency is less scary
+
+### Some Weaknesses
+- Ownership rules can be difficult to remember, which makes code more likely
+  not to compile
+  - To be honest I'm not sure if this is a weakness, because if the compiler
+    didn't catch this a user might
+- Macro syntax is hard to read (the Rust book admits this)
+- If you want to write a program that performs invalid access to memory,
+  this might not be possible to do in Rust (for instance, to test robustness
+  of an operating system). This is kind of beyond the scope of Rust but I wanted
+  to include at least three weaknesses and I'm sure this technically counts.
+
+## Webserver
+
+I've looked at an HTTP library called hyper and placed the example code from
+their documentation under `/webserver` of this repo. Unfortunately I wasn't able
+to install the dependancy due to issue #2078 of Cargo
+(https://github.com/rust-lang/cargo/issues/2078), so instead I'll discuss some
+interesting things about the library.
